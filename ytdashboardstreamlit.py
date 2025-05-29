@@ -7,7 +7,7 @@ import plotly.express as px
 # Load data
 @st.cache_data
 def load_data():
-    df = pd.read_csv(r"C:\Users\Kamlesh\Documents\Code aur Masti\hexintern\Global YouTube Statistics.csv", encoding='latin1')
+    df = pd.read_csv("Global YouTube Statistics.csv", encoding='latin1')
     df.columns = [col.strip().lower().replace(" ", "_") for col in df.columns]
     
     numeric_cols = [
