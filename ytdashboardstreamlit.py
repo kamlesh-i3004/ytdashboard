@@ -132,8 +132,60 @@ with col5:
         delta=f"{avg_engagement - df['engagement_rate'].mean():.1f}%"
     )
 
+# Search and Compare Feature
+st.subheader("🔍 Channel Search & Compare")
+col1, col2 = st.columns(2)
+
+with col1:
+    search_term = st.text_input("Search for a specific channel:", placeholder="Type channel name...")
+    if search_term:
+        matches = filtered_df[filtered_df['youtuber'].str.contains(search_term, case=False, na=False)]
+        if not matches.empty:
+            st.write(f"Found {len(matches)} matches:")
+            for _, channel in matches.head(5).iterrows():
+                st.write(f"🎬 **{channel['youtuber']}** ({channel['country']}) - {channel['subscribers']/1000000:.1f}M subs")
+
+with col2:
+    # Channel comparison
+    available_channels = filtered_df['youtuber'].dropna().tolist()[:100]  # Limit for performance
+    compare_channels = st.multiselect("Compare Channels (max 5):", available_channels, max_selections=5)
+    
+    if compare_channels:
+        comparison_data = filtered_df[filtered_df['youtuber'].isin(compare_channels)]
+        metrics_to_compare = ['subscribers', 'video_views', 'uploads', 'avg_monthly_earnings']
+        
+        fig_compare = px.bar(
+            comparison_data.melt(id_vars=['youtuber'], value_vars=metrics_to_compare),
+            x='youtuber', y='value', color='variable', barmode='group',
+            title="Channel Comparison", facet_col='variable', facet_col_wrap=2
+        )
+        fig_compare.update_yaxes(matches=None)
+        st.plotly_chart(fig_compare, use_container_width=True)
+
+# Random Channel Spotlight
+st.subheader("🎲 Random Channel Spotlight")
+if st.button("Discover Random Channel"):
+    random_channel = filtered_df.sample(1).iloc[0]
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(f"""
+        ### 🎬 {random_channel['youtuber']}
+        **Country:** {random_channel['country']}  
+        **Type:** {random_channel['channel_type']}
+        """)
+    
+    with col2:
+        st.metric("Subscribers", f"{random_channel['subscribers']/1000000:.1f}M")
+        st.metric("Total Views", f"{random_channel['video_views']/1000000000:.1f}B")
+        
+    with col3:
+        st.metric("Videos Uploaded", f"{int(random_channel['uploads'])}")
+        if pd.notna(random_channel['avg_monthly_earnings']):
+            st.metric("Est. Monthly Earnings", f"${random_channel['avg_monthly_earnings']:,.0f}")
+
 # Main Dashboard
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Overview", "🌍 Geographic Analysis", "💰 Financial Insights", "📈 Performance Metrics"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Overview", "🌍 Geographic Analysis", "💰 Financial Insights", "📈 Performance Metrics", "🏆 Leaderboards"])
 
 with tab1:
     col1, col2 = st.columns(2)
@@ -295,7 +347,213 @@ with tab4:
         color_continuous_scale='RdBu',
         title="Correlation Between Key Metrics"
     )
-    st.plotly_chart(fig10, use_container_width=True)
+with tab5:
+    st.subheader("🏆 YouTube Leaderboards")
+    
+    # Create different leaderboard categories
+    leaderboard_type = st.selectbox(
+        "Choose Leaderboard:", 
+        ["👑 Most Subscribers", "👀 Most Views", "📹 Most Videos", "💰 Highest Earners", 
+         "🔥 Best Engagement", "⚡ Most Efficient", "🌟 Hidden Gems"]
+    )
+    
+    if leaderboard_type == "👑 Most Subscribers":
+        top_channels = filtered_df.nlargest(20, 'subscribers')
+        display_cols = ['youtuber', 'country', 'subscribers', 'channel_type']
+        
+    elif leaderboard_type == "👀 Most Views":
+        top_channels = filtered_df.nlargest(20, 'video_views')
+        display_cols = ['youtuber', 'country', 'video_views', 'channel_type']
+        
+    elif leaderboard_type == "📹 Most Videos":
+        top_channels = filtered_df.nlargest(20, 'uploads')
+        display_cols = ['youtuber', 'country', 'uploads', 'channel_type']
+        
+    elif leaderboard_type == "💰 Highest Earners":
+        top_channels = filtered_df.nlargest(20, 'avg_monthly_earnings')
+        display_cols = ['youtuber', 'country', 'avg_monthly_earnings', 'channel_type']
+        
+    elif leaderboard_type == "🔥 Best Engagement":
+        top_channels = filtered_df.nlargest(20, 'engagement_rate')
+        display_cols = ['youtuber', 'country', 'engagement_rate', 'channel_type']
+        
+    elif leaderboard_type == "⚡ Most Efficient":
+        top_channels = filtered_df.nlargest(20, 'views_per_video')
+        display_cols = ['youtuber', 'country', 'views_per_video', 'channel_type']
+        
+    else:  # Hidden Gems
+        # Channels with high engagement but lower subscriber count
+        gems = filtered_df[
+            (filtered_df['engagement_rate'] > filtered_df['engagement_rate'].quantile(0.6)) &
+            (filtered_df['subscribers'] < filtered_df['subscribers'].quantile(0.4))
+        ].nlargest(20, 'engagement_rate')
+        top_channels = gems
+        display_cols = ['youtuber', 'country', 'engagement_rate', 'subscribers', 'channel_type']
+    
+    # Display leaderboard with ranking
+    if not top_channels.empty:
+        leaderboard_display = top_channels[display_cols].reset_index(drop=True)
+        leaderboard_display.index += 1  # Start ranking from 1
+        leaderboard_display.index.name = 'Rank'
+        
+        # Format numbers for better display
+        for col in leaderboard_display.columns:
+            if col == 'subscribers' or col == 'video_views':
+                leaderboard_display[col] = leaderboard_display[col].apply(lambda x: f"{x/1000000:.1f}M" if pd.notna(x) else "N/A")
+            elif col == 'avg_monthly_earnings':
+                leaderboard_display[col] = leaderboard_display[col].apply(lambda x: f"${x:,.0f}" if pd.notna(x) else "N/A")
+            elif col == 'views_per_video':
+                leaderboard_display[col] = leaderboard_display[col].apply(lambda x: f"{x/1000000:.1f}M" if pd.notna(x) else "N/A")
+            elif col == 'engagement_rate':
+                leaderboard_display[col] = leaderboard_display[col].apply(lambda x: f"{x:.1f}%" if pd.notna(x) else "N/A")
+        
+        st.dataframe(leaderboard_display, use_container_width=True)
+        
+        # Show top 3 with special formatting
+        st.subheader("🥇 Top 3 Spotlight")
+        cols = st.columns(3)
+        medals = ["🥇", "🥈", "🥉"]
+        
+        for i, (idx, channel) in enumerate(top_channels.head(3).iterrows()):
+            with cols[i]:
+                st.markdown(f"""
+                <div style="background: linear-gradient(45deg, #FFD700, #FFA500); padding: 15px; border-radius: 10px; text-align: center; color: white; margin: 10px 0;">
+                    <h3>{medals[i]} #{i+1}</h3>
+                    <h4>{channel['youtuber']}</h4>
+                    <p>{channel['country']} • {channel['channel_type']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+# Fun Facts Section
+st.subheader("🎯 Fun Facts & Quick Stats")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.markdown("""
+    ### 🌍 Global Reach
+    """)
+    unique_countries = filtered_df['country'].nunique()
+    st.info(f"📍 Channels from **{unique_countries}** different countries!")
+    
+    most_common_country = filtered_df['country'].value_counts().index[0]
+    country_count = filtered_df['country'].value_counts().iloc[0]
+    st.info(f"🏆 **{most_common_country}** leads with **{country_count}** channels!")
+
+with col2:
+    st.markdown("""
+    ### 💰 Money Talks
+    """)
+    total_monthly_earnings = filtered_df['avg_monthly_earnings'].sum()
+    st.success(f"💸 Combined monthly earnings: **${total_monthly_earnings/1000000:.1f}M**")
+    
+    median_earnings = filtered_df['avg_monthly_earnings'].median()
+    st.info(f"📊 Median monthly earnings: **${median_earnings:,.0f}**")
+
+with col3:
+    st.markdown("""
+    ### 📺 Content Stats
+    """)
+    total_videos = filtered_df['uploads'].sum()
+    st.info(f"🎬 Total videos uploaded: **{total_videos:,.0f}**")
+    
+    avg_videos_per_channel = filtered_df['uploads'].mean()
+    st.info(f"📹 Average videos per channel: **{avg_videos_per_channel:.0f}**")
+
+# Interactive Quiz Section
+st.subheader("🎮 YouTube Trivia Challenge")
+
+if st.button("🎲 Generate Random Trivia Question"):
+    quiz_type = np.random.choice(['highest', 'country', 'type', 'compare'])
+    
+    if quiz_type == 'highest':
+        top_channel = filtered_df.nlargest(1, 'subscribers').iloc[0]
+        st.warning(f"❓ **Which channel has the most subscribers in your filtered data?**")
+        if st.button("Show Answer 👀"):
+            st.success(f"🎉 **{top_channel['youtuber']}** with {top_channel['subscribers']/1000000:.1f}M subscribers!")
+    
+    elif quiz_type == 'country':
+        random_country = filtered_df['country'].dropna().sample(1).iloc[0]
+        country_channels = filtered_df[filtered_df['country'] == random_country]
+        st.warning(f"❓ **How many channels are from {random_country}?**")
+        if st.button("Show Answer 👀"):
+            st.success(f"🎉 There are **{len(country_channels)}** channels from {random_country}!")
+    
+    elif quiz_type == 'type':
+        most_common_type = filtered_df['channel_type'].value_counts().index[0]
+        type_count = filtered_df['channel_type'].value_counts().iloc[0]
+        st.warning(f"❓ **What's the most common channel type?**")
+        if st.button("Show Answer 👀"):
+            st.success(f"🎉 **{most_common_type}** with **{type_count}** channels!")
+    
+    else:  # compare
+        two_channels = filtered_df.sample(2)
+        ch1, ch2 = two_channels.iloc[0], two_channels.iloc[1]
+        st.warning(f"❓ **Who has more subscribers: {ch1['youtuber']} or {ch2['youtuber']}?**")
+        if st.button("Show Answer 👀"):
+            winner = ch1 if ch1['subscribers'] > ch2['subscribers'] else ch2
+            st.success(f"🎉 **{winner['youtuber']}** wins with {winner['subscribers']/1000000:.1f}M subscribers!")
+
+# Data Quality Insights
+st.subheader("📋 Data Quality Check")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown("### Missing Data Overview")
+    missing_data = filtered_df.isnull().sum()
+    missing_data = missing_data[missing_data > 0].sort_values(ascending=False)
+    
+    if not missing_data.empty:
+        fig_missing = px.bar(
+            x=missing_data.values, 
+            y=missing_data.index,
+            orientation='h',
+            title="Missing Values by Column",
+            color=missing_data.values,
+            color_continuous_scale='reds'
+        )
+        st.plotly_chart(fig_missing, use_container_width=True)
+    else:
+        st.success("✅ No missing data in filtered dataset!")
+
+with col2:
+    st.markdown("### Data Ranges")
+    
+    # Show interesting data ranges
+    st.write("**Subscriber Range:**")
+    st.write(f"Min: {filtered_df['subscribers'].min()/1000:.0f}K | Max: {filtered_df['subscribers'].max()/1000000:.0f}M")
+    
+    st.write("**Upload Count Range:**")
+    st.write(f"Min: {filtered_df['uploads'].min():.0f} | Max: {filtered_df['uploads'].max():.0f}")
+    
+    if filtered_df['avg_monthly_earnings'].notna().any():
+        st.write("**Monthly Earnings Range:**")
+        min_earn = filtered_df['avg_monthly_earnings'].min()
+        max_earn = filtered_df['avg_monthly_earnings'].max()
+        st.write(f"Min: ${min_earn:,.0f} | Max: ${max_earn:,.0f}")
+
+# Channel Categories Breakdown
+st.subheader("🎭 Channel Categories Deep Dive")
+
+category_stats = filtered_df.groupby('channel_type').agg({
+    'youtuber': 'count',
+    'subscribers': ['mean', 'median', 'max'],
+    'avg_monthly_earnings': ['mean', 'median'],
+    'uploads': 'mean'
+}).round(2)
+
+category_stats.columns = ['Count', 'Avg Subscribers', 'Median Subscribers', 'Max Subscribers', 
+                         'Avg Earnings', 'Median Earnings', 'Avg Videos']
+
+# Format the numbers
+category_stats['Avg Subscribers'] = category_stats['Avg Subscribers'].apply(lambda x: f"{x/1000000:.1f}M")
+category_stats['Median Subscribers'] = category_stats['Median Subscribers'].apply(lambda x: f"{x/1000000:.1f}M")
+category_stats['Max Subscribers'] = category_stats['Max Subscribers'].apply(lambda x: f"{x/1000000:.1f}M")
+category_stats['Avg Earnings'] = category_stats['Avg Earnings'].apply(lambda x: f"${x:,.0f}" if pd.notna(x) else "N/A")
+category_stats['Median Earnings'] = category_stats['Median Earnings'].apply(lambda x: f"${x:,.0f}" if pd.notna(x) else "N/A")
+
+st.dataframe(category_stats, use_container_width=True)
 
 # Advanced Analytics Section
 st.subheader("🔍 Advanced Analytics")
