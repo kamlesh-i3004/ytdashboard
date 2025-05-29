@@ -48,7 +48,7 @@ st.markdown("""
         font-weight: bold !important;
     }
 </style>
-""", unsafe_allow_html=True
+""", unsafe_allow_html=True)
 #header            
 st.markdown("# 📊 YouTube Analytics Dashboard")
 st.markdown("*Comprehensive analysis of global YouTube channel statistics*")
