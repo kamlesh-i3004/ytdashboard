@@ -7,10 +7,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import datetime
 
-# Page config
 st.set_page_config(page_title="YouTube Analytics Dashboard", page_icon="📊", layout="wide")
 
-# Load data
 @st.cache_data
 def load_data():
     df = pd.read_csv("Global YouTube Statistics.csv", encoding='latin1')
@@ -35,7 +33,6 @@ def load_data():
 
 df = load_data()
 
-# Custom CSS
 st.markdown("""
 <style>
     .metric-card {
@@ -51,13 +48,12 @@ st.markdown("""
         font-weight: bold !important;
     }
 </style>
-""", unsafe_allow_html=True)
-
-# Header
+""", unsafe_allow_html=True
+#header            
 st.markdown("# 📊 YouTube Analytics Dashboard")
 st.markdown("*Comprehensive analysis of global YouTube channel statistics*")
 
-# Sidebar filters
+#sidebar
 st.sidebar.header("🔍 Filter Options")
 countries = sorted(df['country'].dropna().unique().tolist())
 channel_types = sorted(df['channel_type'].dropna().unique().tolist())
@@ -65,7 +61,7 @@ channel_types = sorted(df['channel_type'].dropna().unique().tolist())
 selected_countries = st.sidebar.multiselect("Countries", countries, default=[])
 selected_types = st.sidebar.multiselect("Channel Types", channel_types, default=[])
 
-# Advanced filters
+#advanced
 st.sidebar.subheader("Advanced Filters")
 min_subs = st.sidebar.slider("Min Subscribers (M)", 0, int(df['subscribers'].max()/1000000), 0)
 min_views = st.sidebar.slider("Min Video Views (B)", 0, int(df['video_views'].max()/1000000000), 0)
@@ -75,7 +71,7 @@ earnings_range = st.sidebar.slider(
     (0, int(df['highest_monthly_earnings'].max()/1000))
 )
 
-# Apply filters
+#apply
 filtered_df = df.copy()
 if selected_countries:
     filtered_df = filtered_df[filtered_df['country'].isin(selected_countries)]
@@ -89,7 +85,7 @@ filtered_df = filtered_df[
     (filtered_df['highest_monthly_earnings'] <= earnings_range[1] * 1000)
 ]
 
-# KPI Metrics - Enhanced
+#kpimetrics
 st.subheader("📈 Key Performance Indicators")
 col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -132,7 +128,7 @@ with col5:
         delta=f"{avg_engagement - df['engagement_rate'].mean():.1f}%"
     )
 
-# Search and Compare Feature
+#search&compare
 st.subheader("🔍 Channel Search & Compare")
 col1, col2 = st.columns(2)
 
@@ -146,7 +142,7 @@ with col1:
                 st.write(f"🎬 **{channel['youtuber']}** ({channel['country']}) - {channel['subscribers']/1000000:.1f}M subs")
 
 with col2:
-    # Channel comparison
+    #channelcompare
     available_channels = filtered_df['youtuber'].dropna().tolist()[:100]  # Limit for performance
     compare_channels = st.multiselect("Compare Channels (max 5):", available_channels, max_selections=5)
     
@@ -162,7 +158,7 @@ with col2:
         fig_compare.update_yaxes(matches=None)
         st.plotly_chart(fig_compare, use_container_width=True)
 
-# Random Channel Spotlight
+#randchannel
 st.subheader("🎲 Random Channel Spotlight")
 if st.button("Discover Random Channel"):
     random_channel = filtered_df.sample(1).iloc[0]
@@ -184,7 +180,7 @@ if st.button("Discover Random Channel"):
         if pd.notna(random_channel['avg_monthly_earnings']):
             st.metric("Est. Monthly Earnings", f"${random_channel['avg_monthly_earnings']:,.0f}")
 
-# Main Dashboard
+#maindash
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Overview", "🌍 Geographic Analysis", "💰 Financial Insights", "📈 Performance Metrics", "🏆 Leaderboards"])
 
 with tab1:
@@ -266,7 +262,7 @@ with tab2:
         fig5.update_xaxes(tickangle=45)
         st.plotly_chart(fig5, use_container_width=True)
     
-    # World map (if you have country codes)
+    #worldmap
     st.subheader("Global Distribution")
     st.info("💡 Tip: Add country codes to your dataset to enable world map visualization!")
 
@@ -334,7 +330,7 @@ with tab4:
         fig9.update_xaxes(tickangle=45)
         st.plotly_chart(fig9, use_container_width=True)
     
-    # Correlation Matrix
+    #correlationmatrix
     st.subheader("Performance Correlation Matrix")
     corr_cols = ['subscribers', 'video_views', 'uploads', 'views_per_video', 
                  'engagement_rate', 'avg_monthly_earnings']
@@ -350,7 +346,7 @@ with tab4:
 with tab5:
     st.subheader("🏆 YouTube Leaderboards")
     
-    # Create different leaderboard categories
+    #leaderboard
     leaderboard_type = st.selectbox(
         "Choose Leaderboard:", 
         ["👑 Most Subscribers", "👀 Most Views", "📹 Most Videos", "💰 Highest Earners", 
@@ -381,8 +377,8 @@ with tab5:
         top_channels = filtered_df.nlargest(20, 'views_per_video')
         display_cols = ['youtuber', 'country', 'views_per_video', 'channel_type']
         
-    else:  # Hidden Gems
-        # Channels with high engagement but lower subscriber count
+    else:
+        #highenglowsubs
         gems = filtered_df[
             (filtered_df['engagement_rate'] > filtered_df['engagement_rate'].quantile(0.6)) &
             (filtered_df['subscribers'] < filtered_df['subscribers'].quantile(0.4))
@@ -390,13 +386,12 @@ with tab5:
         top_channels = gems
         display_cols = ['youtuber', 'country', 'engagement_rate', 'subscribers', 'channel_type']
     
-    # Display leaderboard with ranking
+    #rankleaderboard
     if not top_channels.empty:
         leaderboard_display = top_channels[display_cols].reset_index(drop=True)
-        leaderboard_display.index += 1  # Start ranking from 1
+        leaderboard_display.index += 1 
         leaderboard_display.index.name = 'Rank'
         
-        # Format numbers for better display
         for col in leaderboard_display.columns:
             if col == 'subscribers' or col == 'video_views':
                 leaderboard_display[col] = leaderboard_display[col].apply(lambda x: f"{x/1000000:.1f}M" if pd.notna(x) else "N/A")
@@ -409,7 +404,7 @@ with tab5:
         
         st.dataframe(leaderboard_display, use_container_width=True)
         
-        # Show top 3 with special formatting
+        #top3
         st.subheader("🥇 Top 3 Spotlight")
         cols = st.columns(3)
         medals = ["🥇", "🥈", "🥉"]
@@ -424,7 +419,7 @@ with tab5:
                 </div>
                 """, unsafe_allow_html=True)
 
-# Fun Facts Section
+#funfact
 st.subheader("🎯 Fun Facts & Quick Stats")
 
 col1, col2, col3 = st.columns(3)
@@ -460,7 +455,7 @@ with col3:
     avg_videos_per_channel = filtered_df['uploads'].mean()
     st.info(f"📹 Average videos per channel: **{avg_videos_per_channel:.0f}**")
 
-# Interactive Quiz Section
+#quiz
 st.subheader("🎮 YouTube Trivia Challenge")
 
 if st.button("🎲 Generate Random Trivia Question"):
@@ -494,7 +489,7 @@ if st.button("🎲 Generate Random Trivia Question"):
             winner = ch1 if ch1['subscribers'] > ch2['subscribers'] else ch2
             st.success(f"🎉 **{winner['youtuber']}** wins with {winner['subscribers']/1000000:.1f}M subscribers!")
 
-# Data Quality Insights
+#insights
 st.subheader("📋 Data Quality Check")
 
 col1, col2 = st.columns(2)
@@ -520,7 +515,7 @@ with col1:
 with col2:
     st.markdown("### Data Ranges")
     
-    # Show interesting data ranges
+    #dataranges
     st.write("**Subscriber Range:**")
     st.write(f"Min: {filtered_df['subscribers'].min()/1000:.0f}K | Max: {filtered_df['subscribers'].max()/1000000:.0f}M")
     
@@ -533,7 +528,7 @@ with col2:
         max_earn = filtered_df['avg_monthly_earnings'].max()
         st.write(f"Min: ${min_earn:,.0f} | Max: ${max_earn:,.0f}")
 
-# Channel Categories Breakdown
+#categorychannel
 st.subheader("🎭 Channel Categories Deep Dive")
 
 category_stats = filtered_df.groupby('channel_type').agg({
@@ -546,7 +541,7 @@ category_stats = filtered_df.groupby('channel_type').agg({
 category_stats.columns = ['Count', 'Avg Subscribers', 'Median Subscribers', 'Max Subscribers', 
                          'Avg Earnings', 'Median Earnings', 'Avg Videos']
 
-# Format the numbers
+#formatnumber
 category_stats['Avg Subscribers'] = category_stats['Avg Subscribers'].apply(lambda x: f"{x/1000000:.1f}M")
 category_stats['Median Subscribers'] = category_stats['Median Subscribers'].apply(lambda x: f"{x/1000000:.1f}M")
 category_stats['Max Subscribers'] = category_stats['Max Subscribers'].apply(lambda x: f"{x/1000000:.1f}M")
@@ -555,7 +550,7 @@ category_stats['Median Earnings'] = category_stats['Median Earnings'].apply(lamb
 
 st.dataframe(category_stats, use_container_width=True)
 
-# Advanced Analytics Section
+#extraanalysis
 st.subheader("🔍 Advanced Analytics")
 
 col1, col2 = st.columns(2)
@@ -563,7 +558,7 @@ col1, col2 = st.columns(2)
 with col1:
     st.write("**Performance Insights:**")
     
-    # Top performers by efficiency
+    #topperformer
     efficiency_metric = filtered_df['video_views'] / filtered_df['uploads']
     top_efficient = filtered_df.loc[efficiency_metric.nlargest(5).index]
     
@@ -574,7 +569,7 @@ with col1:
 with col2:
     st.write("**Growth Potential:**")
     
-    # High engagement, lower subscribers (growth potential)
+    #highenglowsubs
     potential = filtered_df[
         (filtered_df['engagement_rate'] > filtered_df['engagement_rate'].quantile(0.7)) &
         (filtered_df['subscribers'] < filtered_df['subscribers'].quantile(0.5))
@@ -584,7 +579,7 @@ with col2:
     for _, row in potential.iterrows():
         st.write(f"• **{row['youtuber']}**: {row['engagement_rate']:.1f}% engagement")
 
-# Data Export
+#exportdata
 st.subheader("📤 Data Export")
 col1, col2, col3 = st.columns(3)
 
@@ -607,7 +602,7 @@ with col2:
         mime="text/csv"
     )
 
-# Raw Data Preview
+#rawrpeview
 with st.expander("📄 View Filtered Dataset"):
     st.dataframe(
         filtered_df.head(100), 
@@ -615,6 +610,6 @@ with st.expander("📄 View Filtered Dataset"):
         height=400
     )
 
-# Footer
+#footer
 st.markdown("---")
 st.markdown("*Dashboard created with Streamlit • Data insights for YouTube channel analysis*")
