@@ -17,10 +17,7 @@ A modern, minimalist dashboard for tracking YouTube statistics, analytics, and i
 
 ## 📦 Tech Stack
 
-- **Frontend**: React / Next.js
-- **Backend**: Node.js / Express
-- **API**: YouTube Data API v3
-- **Styling**: Tailwind CSS / Styled Components
+- **Language- Python (streamlit)
 
 ---
 
